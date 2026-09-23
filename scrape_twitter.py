@@ -4,59 +4,7 @@ import time
 import httpx
 from twikit import Client
 from twikit.errors import Forbidden, Unauthorized, UserNotFound
-#补丁
-class _StubTransaction:
-    home_page_response = True
-    async def init(self, session, headers):
-        return None
-    def generate_transaction_id(self, method, path):
-        return ""
-_TWIKIT_LEGACY_DEFAULTS = {
-    "created_at": "",
-    "name": "",
-    "screen_name": "",
-    "profile_image_url_https": "",
-    "location": "",
-    "description": "",
-    "pinned_tweet_ids_str": [],
-    "verified": False,
-    "possibly_sensitive": False,
-    "can_dm": False,
-    "can_media_tag": False,
-    "want_retweets": False,
-    "default_profile": False,
-    "default_profile_image": False,
-    "has_custom_timelines": False,
-    "followers_count": 0,
-    "fast_followers_count": 0,
-    "normal_followers_count": 0,
-    "friends_count": 0,
-    "favourites_count": 0,
-    "listed_count": 0,
-    "media_count": 0,
-    "statuses_count": 0,
-    "is_translator": False,
-    "translator_type": "",
-    "withheld_in_countries": [],
-}
-def _patch_twikit_user():
-    import twikit.user
-    if getattr(twikit.user.User, "_legacy_patched", False):
-        return
-    original_init = twikit.user.User.__init__
-    def safe_init(self, client, data):
-        legacy = data.setdefault("legacy", {})
-        for key, default in _TWIKIT_LEGACY_DEFAULTS.items():
-            legacy.setdefault(key, default)
-        entities = legacy.get("entities") or {}
-        entities.setdefault("description", {}).setdefault("urls", [])
-        entities.setdefault("url", {}).setdefault("urls", [])
-        legacy["entities"] = entities
-        data.setdefault("is_blue_verified", False)
-        data.setdefault("rest_id", "")
-        return original_init(self, client, data)
-    twikit.user.User.__init__ = safe_init
-    twikit.user.User._legacy_patched = True
+
 
 async def login(client: Client, cookies: dict, username: str):
     client.set_cookies(cookies)
@@ -94,9 +42,7 @@ def append_tweet_to_file(tweet, json_fh):
 
 
 async def run(username: str, limit: int, wait: float,  cookies: dict ) :
-    _patch_twikit_user()
     client = Client("en-US")
-    client.client_transaction = _StubTransaction()
     user = await login(client, cookies, username)
 
     # 目标用户 id
